@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BBGM "Moneyball" Analyzer v2</title>
+    <title>BBGM "Moneyball" Analyzer v3</title>
     <style>
         :root {
             --bg: #0f172a;
@@ -15,6 +15,7 @@
             --yellow: #facc15;
             --purple: #c084fc;
             --muted: #94a3b8;
+            --orange: #fb923c;
         }
         body {
             font-family: 'Inter', system-ui, -apple-system, sans-serif;
@@ -25,21 +26,19 @@
         }
         .container { max-width: 1400px; margin: 0 auto; }
         h1 { color: var(--accent); margin-bottom: 5px; }
-        h2 { color: var(--text); border-bottom: 2px solid var(--card); padding-bottom: 10px; margin-top: 0;}
-        p { color: var(--muted); margin-top: 0;}
+        h2 { color: var(--text); border-bottom: 2px solid #334155; padding-bottom: 10px; margin-top: 0; font-size: 1.2rem;}
+        p { color: var(--muted); margin-top: 0; font-size: 0.9rem;}
         
         /* Upload Section */
         .upload-box {
             background: var(--card);
-            padding: 2rem;
+            padding: 1.5rem;
             border-radius: 12px;
             border: 2px dashed var(--accent);
             text-align: center;
             margin-bottom: 2rem;
         }
-        input[type="file"] {
-            color: var(--text);
-        }
+        input[type="file"] { color: var(--text); }
         select, button {
             padding: 10px 15px;
             background: #334155;
@@ -56,12 +55,12 @@
         /* Grid Layout */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
             gap: 20px;
         }
         .card {
             background: var(--card);
-            padding: 20px;
+            padding: 15px;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.2);
             height: fit-content;
@@ -70,30 +69,40 @@
         /* Tables */
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
         th { text-align: left; color: var(--muted); font-weight: 600; padding: 8px 4px; border-bottom: 1px solid #334155; }
-        td { padding: 8px 4px; border-bottom: 1px solid #334155; }
+        td { padding: 6px 4px; border-bottom: 1px solid #334155; }
         tr:last-child td { border-bottom: none; }
         
-        /* Indicators */
-        .stat-val { font-weight: bold; }
-        .val-elite { color: var(--purple); text-shadow: 0 0 10px rgba(192,132,252,0.3); }
+        /* Visual Indicators */
+        .stat-val { font-weight: bold; font-family: monospace; }
+        .val-elite { color: var(--purple); }
         .val-good { color: var(--green); }
         .val-mid { color: var(--yellow); }
         .val-bad { color: var(--red); }
+        .val-exp { color: var(--orange); } /* Expensive */
         
+        .section-header {
+            background: #334155;
+            color: #fff;
+            font-weight: bold;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 1px;
+        }
+
         .tag {
             display: inline-block;
             font-size: 0.65em;
             padding: 2px 6px;
             border-radius: 4px;
-            margin-left: 6px;
+            margin-left: 4px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
             color: #1e1e2e;
         }
-        .tag-stash { background: var(--purple); color: white; }
-        .tag-core { background: var(--accent); color: white; }
-        .tag-risk { background: var(--red); color: white; }
+        .tag-bh { background: var(--accent); color: white; }
+        .tag-big { background: var(--green); color: white; }
+        .tag-steal { background: var(--green); color: #0f172a; }
+        .tag-exp { background: var(--orange); color: white; }
 
         #teamSelectorArea { display: none; margin-top: 20px; }
     </style>
@@ -101,8 +110,8 @@
 <body>
 
 <div class="container">
-    <h1>🏀 BBGM Roster Architect</h1>
-    <p>Upload <strong>Player Ratings</strong> CSV. Prioritizes <strong>Physical Ceiling</strong> for youth and <strong>Efficiency</strong> for vets.</p>
+    <h1>🏀 BBGM Roster Architect v3.0</h1>
+    <p>Upload <strong>Player Ratings</strong> CSV. Optimizes rotation order and identifies undervalued trade targets.</p>
     
     <div class="upload-box">
         <input type="file" id="csvInput" accept=".csv" />
@@ -115,42 +124,42 @@
 
     <div id="results" class="grid" style="display: none;">
         
-        <!-- 1. Starting Lineup -->
-        <div class="card">
-            <h2>⚡ Optimized Starting 5</h2>
-            <p>Best mix of height, handling, and current ability.</p>
-            <table id="starterTable">
-                <thead><tr><th>Name (Age)</th><th>Role</th><th title="Current Ability">Meta</th></tr></thead>
+        <!-- 1. Game Plan (Rotation) -->
+        <div class="card" style="border-top: 4px solid var(--accent);">
+            <h2>📋 Game Plan & Rotation</h2>
+            <p>Set your lineup in this exact order. Engine prioritizes top bench players.</p>
+            <table id="rotationTable">
+                <thead><tr><th>Slot</th><th>Name (Age)</th><th>Role</th><th title="Current Ability">Meta</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
 
-        <!-- 2. Stash / Projects -->
-        <div class="card" style="border-top: 4px solid var(--purple);">
-            <h2>💎 The "Process" (Stash)</h2>
-            <p>Young players (<=24) with elite physical tools. <strong>DO NOT CUT.</strong></p>
-            <table id="projectTable">
-                <thead><tr><th>Name (Age)</th><th>Physical Profile</th><th>Potential</th></tr></thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <!-- 3. Trade Bait / Cuts -->
-        <div class="card" style="border-top: 4px solid var(--red);">
-            <h2>✂️ Roster Cloggers (Cut/Trade)</h2>
-            <p>Low upside. Either old & slow, or young & unathletic.</p>
-            <table id="cutTable">
-                <thead><tr><th>Name (Age)</th><th>Issue</th><th>Metric</th></tr></thead>
-                <tbody></tbody>
-            </table>
-        </div>
-
-        <!-- 4. League Targets -->
+        <!-- 2. Trade Targets -->
         <div class="card" style="border-top: 4px solid var(--green);">
-            <h2>🎯 League Trade Targets</h2>
-            <p>Undervalued assets on other teams.</p>
+            <h2>🎯 Trade Targets (Physicals > OVR)</h2>
+            <p>Players with elite tools. "Steals" have lower Potential (easier to trade for).</p>
             <table id="targetTable">
-                <thead><tr><th>Name (Age)</th><th>Team</th><th>Archetype</th></tr></thead>
+                <thead><tr><th>Name (Age)</th><th>Team</th><th title="Potential determines trade difficulty">Pot</th><th>Type</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- 3. Stash / Projects -->
+        <div class="card" style="border-top: 4px solid var(--purple);">
+            <h2>💎 Development Projects</h2>
+            <p>Young (<=24). Keep them even if their OVR is low. Their physicals will let them grow.</p>
+            <table id="projectTable">
+                <thead><tr><th>Name (Age)</th><th>Physical Score</th><th>Status</th></tr></thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <!-- 4. Trade Bait / Cuts -->
+        <div class="card" style="border-top: 4px solid var(--red);">
+            <h2>✂️ Cuts / Salary Dumps</h2>
+            <p>Players with low ceilings or declining athleticism.</p>
+            <table id="cutTable">
+                <thead><tr><th>Name (Age)</th><th>Issue</th><th>Meta</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
@@ -173,8 +182,9 @@
         const lines = csv.split('\n');
         const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
         
+        // Validation
         if (!headers.includes('Hgt') && !headers.includes('hgt')) {
-            alert("⚠️ Please upload the Player RATINGS file (not stats). Need Hgt, Spd, Jmp.");
+            alert("⚠️ Wrong File! Please upload 'Player Ratings'.");
             return;
         }
 
@@ -212,8 +222,7 @@
     function calculateMetrics(p) {
         const get = (val) => (typeof val === 'number' && !isNaN(val)) ? val : 0;
 
-        // 1. Current Game Impact (Meta Score)
-        // Weighted heavily towards Height and IQ for current performance
+        // 1. Meta Score (Current Game Impact)
         p.metaScore = (
             (get(p.hgt) * 2.8) + 
             (get(p.spd) * 1.0) + 
@@ -226,26 +235,15 @@
             (get(p['3pt']) * 0.6) 
         );
 
-        // 2. Physical Ceiling (For Young Players)
-        // Pure athleticism. Skills can be learned, height cannot.
+        // 2. Physical Ceiling
         p.physicalScore = (get(p.hgt) * 2.5) + get(p.spd) + get(p.jmp) + (get(p.str) * 0.5);
 
         // 3. Functional Tags
         p.isBallHandler = (get(p.drb) + get(p.pss)) / 2 > 50;
         p.isBig = get(p.hgt) > 60 || (get(p.hgt) > 50 && get(p.str) > 60);
         
-        // 4. Classification
-        if (p.age <= 24) {
-            // Young players are judged by Physicals
-            if (p.physicalScore > 200) p.archetype = "Elite Prospect";
-            else if (p.physicalScore > 160) p.archetype = "Rotation Prospect";
-            else p.archetype = "Low Ceiling";
-        } else {
-            // Old players are judged by Meta Score (Current Ability)
-            if (p.metaScore > 600) p.archetype = "Star Vet";
-            else if (p.metaScore > 450) p.archetype = "Role Vet";
-            else p.archetype = "Washed";
-        }
+        // 4. Pot Value (for Trading Difficulty)
+        p.pot = get(p.pot); 
     }
 
     function runAnalysis() {
@@ -255,39 +253,60 @@
 
         document.getElementById('results').style.display = 'grid';
         
-        buildLineup(myPlayers);
+        buildRotation(myPlayers);
         buildProjects(myPlayers);
         buildCuts(myPlayers);
         buildTargets(otherPlayers);
     }
 
-    function buildLineup(roster) {
-        // Sort by current ability (Meta Score)
+    function buildRotation(roster) {
+        // 1. Identify Starters (Top 5 by Meta, ensuring 1 Handler)
         let sorted = [...roster].sort((a, b) => b.metaScore - a.metaScore);
         let starters = sorted.slice(0, 5);
 
-        // Logic: Ensure at least 1 Ball Handler
         let hasHandler = starters.some(p => p.isBallHandler);
         if (!hasHandler) {
             let bestHandler = sorted.slice(5).find(p => p.isBallHandler);
             if (bestHandler) {
-                starters.pop(); // Remove 5th best
-                starters.push(bestHandler); // Add handler
+                starters.pop(); 
+                starters.push(bestHandler);
             }
         }
-
-        // Sort for display
+        // Sort starters by Meta for display
         starters.sort((a, b) => b.metaScore - a.metaScore);
 
-        const tbody = document.querySelector('#starterTable tbody');
+        // 2. Identify Bench (Remaining players, sorted STRICTLY by Meta Score)
+        // The engine uses list order for subs. You want best players at 6, 7, 8.
+        let bench = sorted.filter(p => !starters.includes(p));
+        bench.sort((a, b) => b.metaScore - a.metaScore);
+
+        const tbody = document.querySelector('#rotationTable tbody');
         tbody.innerHTML = '';
-        starters.forEach(p => {
-            let colorClass = p.metaScore > 600 ? 'val-elite' : 'val-good';
-            tbody.innerHTML += `<tr>
-                <td><b>${p.name}</b> <small>(${p.age})</small></td>
-                <td>${p.hgt >= 55 ? 'Frontcourt' : 'Backcourt'}</td>
+
+        // Helper to render row
+        const renderRow = (p, role, slot) => {
+            let colorClass = p.metaScore > 600 ? 'val-elite' : (p.metaScore > 500 ? 'val-good' : 'val-mid');
+            let tags = "";
+            if(p.isBallHandler) tags += `<span class="tag tag-bh">BH</span>`;
+            if(p.isBig) tags += `<span class="tag tag-big">Big</span>`;
+
+            return `<tr>
+                <td><span style="color:var(--muted)">${slot}</span></td>
+                <td><b>${p.name}</b> <small>(${p.age})</small>${tags}</td>
+                <td>${role}</td>
                 <td class="${colorClass} stat-val">${Math.round(p.metaScore)}</td>
             </tr>`;
+        };
+
+        // Render Starters
+        tbody.innerHTML += `<tr class="section-header"><td colspan="4">Starters</td></tr>`;
+        starters.forEach((p, i) => tbody.innerHTML += renderRow(p, "Starter", i+1));
+
+        // Render Bench
+        tbody.innerHTML += `<tr class="section-header"><td colspan="4">Bench (In Order)</td></tr>`;
+        bench.forEach((p, i) => {
+            let role = i < 3 ? "Rotation" : (i < 5 ? "Deep Bench" : "Reserve");
+            tbody.innerHTML += renderRow(p, role, i+6);
         });
     }
 
@@ -295,20 +314,20 @@
         const tbody = document.querySelector('#projectTable tbody');
         tbody.innerHTML = '';
 
-        // Filter: Young players who might NOT be starters, but have high physicals
-        let projects = roster.filter(p => p.age <= 25);
-        
-        // Sort by Physical Score (Ceiling)
+        // Young players only
+        let projects = roster.filter(p => p.age <= 24);
         projects.sort((a, b) => b.physicalScore - a.physicalScore);
 
-        projects.slice(0, 5).forEach(p => {
-            let isRaw = p.metaScore < 450; // Good physicals, bad skills
-            let status = isRaw ? `<span class="tag tag-stash">Raw Gem</span>` : `<span class="tag tag-core">Core</span>`;
-            
+        projects.forEach(p => {
+            let status = "";
+            if(p.physicalScore > 200) status = `<span class="val-elite">Elite Athlete</span>`;
+            else if(p.physicalScore > 160) status = `<span class="val-good">Solid</span>`;
+            else status = `<span class="val-bad">Limited</span>`;
+
             tbody.innerHTML += `<tr>
-                <td><b>${p.name}</b> <small>(${p.age})</small> ${status}</td>
-                <td>H:${p.hgt} S:${p.spd} J:${p.jmp}</td>
+                <td><b>${p.name}</b> <small>(${p.age})</small></td>
                 <td class="stat-val">${Math.round(p.physicalScore)}</td>
+                <td>${status}</td>
             </tr>`;
         });
     }
@@ -318,25 +337,19 @@
         tbody.innerHTML = '';
 
         let cuts = roster.filter(p => {
-            // 1. Old and bad (Washed)
-            if (p.age > 26 && p.metaScore < 400) return true;
-            
-            // 2. Young but physically limited (No upside)
-            // If you are 22, 5'10" (hgt < 30) and slow (spd < 50), you will never be good in BBGM.
-            if (p.age <= 25 && p.hgt < 35 && p.spd < 55 && p.metaScore < 400) return true;
-            
+            // Old and bad
+            if (p.age > 26 && p.metaScore < 420) return true;
+            // Young and unathletic (No hope)
+            if (p.age <= 25 && p.physicalScore < 140 && p.metaScore < 400) return true;
             return false;
         });
 
-        cuts.sort((a, b) => a.metaScore - b.metaScore); // Worst first
+        cuts.sort((a, b) => a.metaScore - b.metaScore);
 
         if (cuts.length === 0) tbody.innerHTML = '<tr><td colspan="3">Roster looks clean!</td></tr>';
 
         cuts.forEach(p => {
-            let reason = "";
-            if (p.age > 26) reason = "Declining / Low Skill";
-            else reason = "Low Physical Ceiling";
-
+            let reason = p.age > 26 ? "Declining" : "No Physical Upside";
             tbody.innerHTML += `<tr>
                 <td>${p.name}</td>
                 <td>${p.age}</td>
@@ -349,28 +362,33 @@
         const tbody = document.querySelector('#targetTable tbody');
         tbody.innerHTML = '';
 
-        // Target Logic:
-        // 1. "The Freak": Age <= 23, Height > 60, Speed > 60 (Giannis/Wemby types)
-        // 2. "The Sniper": 3pt > 70, Age < 28 (Spacing)
-        // 3. "The General": Dribble + Pass > 140 combined (Elite handler)
-        
+        // Target Logic: High Physicals + Youth
         let targets = others.filter(p => {
-            let isFreak = p.age <= 23 && p.hgt > 60 && p.spd > 50;
+            let isFreak = p.age <= 23 && p.hgt > 58 && p.spd > 55;
             let isYoungElite = p.age <= 24 && p.physicalScore > 200;
             return isFreak || isYoungElite;
         });
 
+        // Sort by physical ceiling
         targets.sort((a, b) => b.physicalScore - a.physicalScore);
 
-        targets.slice(0, 8).forEach(p => {
-            let type = "Prospect";
-            if(p.hgt > 70) type = "Unicorn Big";
-            else if(p.spd > 75) type = "Speedster";
+        targets.slice(0, 10).forEach(p => {
+            let potClass = p.pot > 65 ? "val-exp" : "val-good";
+            let typeTag = "";
             
+            // Trade Difficulty Logic
+            if (p.pot > 65) typeTag = `<span class="tag tag-exp">Expensive</span>`;
+            else if (p.pot < 55) typeTag = `<span class="tag tag-steal">Steal</span>`;
+            else typeTag = `<span class="tag" style="background:#ccc">Fair</span>`;
+
+            let archetype = "Athlete";
+            if (p.hgt > 70) archetype = "Big Man";
+            if (p.drb > 50) archetype = "Handler";
+
             tbody.innerHTML += `<tr>
-                <td><b>${p.name}</b> <small>(${p.age})</small></td>
-                <td><small>${p.team}</small></td>
-                <td class="val-mid">${type}</td>
+                <td><b>${p.name}</b> <small>(${p.age})</small> <br><small>${p.team}</small></td>
+                <td class="${potClass} stat-val">${p.pot}</td>
+                <td>${archetype} ${typeTag}</td>
             </tr>`;
         });
     }
