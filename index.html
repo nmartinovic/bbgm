@@ -3,27 +3,30 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BBGM "Meta" Analyzer</title>
+    <title>BBGM "Moneyball" Analyzer v2</title>
     <style>
         :root {
-            --bg: #1e1e2e;
-            --card: #2b2b40;
-            --text: #cdd6f4;
-            --accent: #89b4fa;
-            --green: #a6e3a1;
-            --red: #f38ba8;
-            --yellow: #f9e2af;
+            --bg: #0f172a;
+            --card: #1e293b;
+            --text: #e2e8f0;
+            --accent: #38bdf8;
+            --green: #4ade80;
+            --red: #f87171;
+            --yellow: #facc15;
+            --purple: #c084fc;
+            --muted: #94a3b8;
         }
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
             background-color: var(--bg);
             color: var(--text);
             margin: 0;
             padding: 20px;
-            line-height: 1.6;
         }
-        h1, h2 { color: var(--accent); }
-        .container { max-width: 1200px; margin: 0 auto; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { color: var(--accent); margin-bottom: 5px; }
+        h2 { color: var(--text); border-bottom: 2px solid var(--card); padding-bottom: 10px; margin-top: 0;}
+        p { color: var(--muted); margin-top: 0;}
         
         /* Upload Section */
         .upload-box {
@@ -34,118 +37,120 @@
             text-align: center;
             margin-bottom: 2rem;
         }
-        input[type="file"], select {
-            padding: 10px;
-            background: var(--bg);
+        input[type="file"] {
             color: var(--text);
-            border: 1px solid var(--accent);
-            border-radius: 5px;
-            margin-top: 10px;
         }
+        select, button {
+            padding: 10px 15px;
+            background: #334155;
+            color: white;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+        button { background: var(--accent); color: var(--bg); border: none; }
+        button:hover { opacity: 0.9; }
 
         /* Grid Layout */
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
             gap: 20px;
         }
         .card {
             background: var(--card);
             padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+            height: fit-content;
         }
         
         /* Tables */
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.9rem; }
-        th { text-align: left; border-bottom: 1px solid var(--accent); padding: 5px; color: var(--accent); }
-        td { padding: 5px; border-bottom: 1px solid #3e3e5e; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.85rem; }
+        th { text-align: left; color: var(--muted); font-weight: 600; padding: 8px 4px; border-bottom: 1px solid #334155; }
+        td { padding: 8px 4px; border-bottom: 1px solid #334155; }
+        tr:last-child td { border-bottom: none; }
         
-        /* Specific styling tags */
-        .val-high { color: var(--green); font-weight: bold; }
+        /* Indicators */
+        .stat-val { font-weight: bold; }
+        .val-elite { color: var(--purple); text-shadow: 0 0 10px rgba(192,132,252,0.3); }
+        .val-good { color: var(--green); }
         .val-mid { color: var(--yellow); }
-        .val-low { color: var(--red); }
+        .val-bad { color: var(--red); }
         
-        .stat-tag {
+        .tag {
             display: inline-block;
-            font-size: 0.7em;
-            padding: 2px 5px;
+            font-size: 0.65em;
+            padding: 2px 6px;
             border-radius: 4px;
-            margin-left: 5px;
-            font-weight: bold;
+            margin-left: 6px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
             color: #1e1e2e;
         }
-        .tag-bh { background-color: var(--accent); } /* Ball Handler */
-        .tag-big { background-color: var(--green); } /* Big Man */
-        .tag-shoot { background-color: var(--yellow); } /* Shooter */
+        .tag-stash { background: var(--purple); color: white; }
+        .tag-core { background: var(--accent); color: white; }
+        .tag-risk { background: var(--red); color: white; }
 
-        button {
-            background-color: var(--accent);
-            color: var(--bg);
-            border: none;
-            padding: 10px 20px;
-            border-radius: 5px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        button:hover { opacity: 0.9; }
-        
-        #teamSelectorArea { display: none; margin-top: 15px; }
+        #teamSelectorArea { display: none; margin-top: 20px; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h1>🏀 BBGM "Meta" Roster Analyzer</h1>
-    <p>Upload your <strong>Player Ratings CSV</strong>. Position labels are ignored. Physics and Skill Aggregates decide the lineup.</p>
+    <h1>🏀 BBGM Roster Architect</h1>
+    <p>Upload <strong>Player Ratings</strong> CSV. Prioritizes <strong>Physical Ceiling</strong> for youth and <strong>Efficiency</strong> for vets.</p>
     
     <div class="upload-box">
         <input type="file" id="csvInput" accept=".csv" />
         <div id="teamSelectorArea">
-            <label for="teamSelect">Select Your Team:</label>
+            <label for="teamSelect">Your Team:</label>
             <select id="teamSelect"></select>
-            <button onclick="runAnalysis()">Analyze Vibe</button>
+            <button onclick="runAnalysis()">Analyze Roster</button>
         </div>
     </div>
 
     <div id="results" class="grid" style="display: none;">
-        <!-- Starting 5 -->
+        
+        <!-- 1. Starting Lineup -->
         <div class="card">
-            <h2>🔥 Optimal Starting 5</h2>
-            <p><i>Balance: Playmaking + Rebounding + Height</i></p>
+            <h2>⚡ Optimized Starting 5</h2>
+            <p>Best mix of height, handling, and current ability.</p>
             <table id="starterTable">
-                <thead><tr><th>Name</th><th>Role</th><th>Meta Score</th></tr></thead>
+                <thead><tr><th>Name (Age)</th><th>Role</th><th title="Current Ability">Meta</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
 
-        <!-- Keepers -->
-        <div class="card">
-            <h2>💎 Core Keepers</h2>
-            <p><i>High Value (Age < 29) or Elite Vets</i></p>
-            <table id="keeperTable">
-                <thead><tr><th>Name</th><th>Age</th><th>Value</th></tr></thead>
+        <!-- 2. Stash / Projects -->
+        <div class="card" style="border-top: 4px solid var(--purple);">
+            <h2>💎 The "Process" (Stash)</h2>
+            <p>Young players (<=24) with elite physical tools. <strong>DO NOT CUT.</strong></p>
+            <table id="projectTable">
+                <thead><tr><th>Name (Age)</th><th>Physical Profile</th><th>Potential</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
 
-        <!-- Trade Bait / Cuts -->
-        <div class="card">
-            <h2>✂️ Trade Bait / Cuts</h2>
-            <p><i>Low Efficiency or Aging fast</i></p>
+        <!-- 3. Trade Bait / Cuts -->
+        <div class="card" style="border-top: 4px solid var(--red);">
+            <h2>✂️ Roster Cloggers (Cut/Trade)</h2>
+            <p>Low upside. Either old & slow, or young & unathletic.</p>
             <table id="cutTable">
-                <thead><tr><th>Name</th><th>Age</th><th>Flaw</th></tr></thead>
+                <thead><tr><th>Name (Age)</th><th>Issue</th><th>Metric</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
 
-        <!-- League Targets -->
-        <div class="card">
-            <h2>🎯 Trade Targets (Other Teams)</h2>
-            <p><i>Undervalued Meta Gods</i></p>
+        <!-- 4. League Targets -->
+        <div class="card" style="border-top: 4px solid var(--green);">
+            <h2>🎯 League Trade Targets</h2>
+            <p>Undervalued assets on other teams.</p>
             <table id="targetTable">
-                <thead><tr><th>Name</th><th>Team</th><th>Why?</th></tr></thead>
+                <thead><tr><th>Name (Age)</th><th>Team</th><th>Archetype</th></tr></thead>
                 <tbody></tbody>
             </table>
         </div>
@@ -156,28 +161,20 @@
     let allPlayers = [];
     let teams = new Set();
 
-    // 1. Parse CSV
     document.getElementById('csvInput').addEventListener('change', function(e) {
         const file = e.target.files[0];
         if (!file) return;
-
         const reader = new FileReader();
-        reader.onload = function(e) {
-            const text = e.target.result;
-            parseCSV(text);
-        };
+        reader.onload = function(e) { parseCSV(e.target.result); };
         reader.readAsText(file);
     });
 
     function parseCSV(csv) {
         const lines = csv.split('\n');
-        
-        // Clean headers: remove quotes, whitespace
         const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
         
-        // Basic validation to ensure it's the Ratings file
         if (!headers.includes('Hgt') && !headers.includes('hgt')) {
-            alert("⚠️ Wrong File! It looks like you uploaded 'Player Stats'. Please upload 'Player Ratings' (which contains Hgt, Spd, Jmp, etc).");
+            alert("⚠️ Please upload the Player RATINGS file (not stats). Need Hgt, Spd, Jmp.");
             return;
         }
 
@@ -186,222 +183,195 @@
 
         for(let i = 1; i < lines.length; i++) {
             if(!lines[i].trim()) continue;
-            
-            // Handle commas inside values (e.g. "Name, Jr.") could break simple splits, 
-            // but BBGM CSVs are usually simple. Simple split for now:
             const currentline = lines[i].split(',');
             let player = {};
             
             for(let j = 0; j < headers.length; j++) {
-                // Clean stat names to lowercase keys to avoid casing issues
                 let header = headers[j].toLowerCase().replace('%','').replace(' ','');
-                
-                // map '3pt' specifically if needed, though lowercase handles it usually
                 let val = currentline[j];
-                
-                // Convert numeric strings to floats
-                if(!isNaN(val) && val.trim() !== "") {
-                    val = parseFloat(val);
-                }
+                if(!isNaN(val) && val.trim() !== "") val = parseFloat(val);
                 player[header] = val;
             }
             
-            // Calculate Custom Metrics
             calculateMetrics(player);
-            
-            // Add to team list if team exists
             if(player.team && player.team !== "") teams.add(player.team);
-            
             allPlayers.push(player);
         }
 
-        // Populate Team Dropdown
         const select = document.getElementById('teamSelect');
         select.innerHTML = '';
-        const sortedTeams = Array.from(teams).sort();
-        sortedTeams.forEach(t => {
+        Array.from(teams).sort().forEach(t => {
             let opt = document.createElement('option');
             opt.value = t;
             opt.innerHTML = t;
             select.appendChild(opt);
         });
-
         document.getElementById('teamSelectorArea').style.display = 'block';
     }
 
-    // 2. The "Secret Sauce" Formulas
     function calculateMetrics(p) {
-        // Helper to safely get a number, defaulting to 0 if missing
         const get = (val) => (typeof val === 'number' && !isNaN(val)) ? val : 0;
 
-        // Meta Score Calculation
-        // Note: We access p['3pt'] because the header is "3Pt" -> becomes "3pt"
+        // 1. Current Game Impact (Meta Score)
+        // Weighted heavily towards Height and IQ for current performance
         p.metaScore = (
-            (get(p.hgt) * 3.0) + 
+            (get(p.hgt) * 2.8) + 
             (get(p.spd) * 1.0) + 
             (get(p.jmp) * 0.8) + 
             (get(p.oiq) * 1.5) + 
             (get(p.diq) * 1.2) + 
             (get(p.drb) * 0.8) + 
             (get(p.pss) * 0.8) + 
-            (get(p.reb) * 1.0) + 
-            (get(p['3pt']) * 0.5) 
+            (get(p.reb) * 0.8) + 
+            (get(p['3pt']) * 0.6) 
         );
 
-        // Determine Functional Roles (Tags) based on ratings
-        p.isBallHandler = (get(p.drb) + get(p.pss)) / 2 > 55;
-        p.isBig = (get(p.hgt) + get(p.str) + get(p.reb)) / 3 > 60;
-        p.isShooter = get(p['3pt']) > 60;
+        // 2. Physical Ceiling (For Young Players)
+        // Pure athleticism. Skills can be learned, height cannot.
+        p.physicalScore = (get(p.hgt) * 2.5) + get(p.spd) + get(p.jmp) + (get(p.str) * 0.5);
+
+        // 3. Functional Tags
+        p.isBallHandler = (get(p.drb) + get(p.pss)) / 2 > 50;
+        p.isBig = get(p.hgt) > 60 || (get(p.hgt) > 50 && get(p.str) > 60);
         
-        // Value over time (for trade logic)
-        // Penalize age heavily after 29 (Athleticism crash in BBGM)
-        let agePenalty = p.age > 29 ? (p.age - 29) * 15 : 0;
-        p.tradeValue = p.metaScore - agePenalty;
+        // 4. Classification
+        if (p.age <= 24) {
+            // Young players are judged by Physicals
+            if (p.physicalScore > 200) p.archetype = "Elite Prospect";
+            else if (p.physicalScore > 160) p.archetype = "Rotation Prospect";
+            else p.archetype = "Low Ceiling";
+        } else {
+            // Old players are judged by Meta Score (Current Ability)
+            if (p.metaScore > 600) p.archetype = "Star Vet";
+            else if (p.metaScore > 450) p.archetype = "Role Vet";
+            else p.archetype = "Washed";
+        }
     }
 
-    // 3. Run Analysis
     function runAnalysis() {
         const myTeamName = document.getElementById('teamSelect').value;
         const myPlayers = allPlayers.filter(p => p.team === myTeamName);
         const otherPlayers = allPlayers.filter(p => p.team !== myTeamName);
 
-        // Sort my players by Meta Score
-        myPlayers.sort((a, b) => b.metaScore - a.metaScore);
-
         document.getElementById('results').style.display = 'grid';
-
+        
         buildLineup(myPlayers);
-        buildKeepers(myPlayers);
+        buildProjects(myPlayers);
         buildCuts(myPlayers);
         buildTargets(otherPlayers);
     }
 
-    // 4. Algorithm: Starting Lineup
     function buildLineup(roster) {
-        // Take top 5 pure talent first
-        let starters = roster.slice(0, 5);
-        
-        // Check for critical missing roles
-        let handlers = starters.filter(p => p.isBallHandler).length;
-        
-        // If no ball handler in top 5, force swap the worst starter for best bench handler
-        // (BBGM engine punishes 0 passers heavily with turnovers)
-        if (handlers === 0) {
-            let benchHandlers = roster.slice(5).filter(p => p.isBallHandler);
-            // Sort bench handlers by meta score to get the best one
-            benchHandlers.sort((a,b) => b.metaScore - a.metaScore);
-            
-            if (benchHandlers.length > 0) {
-                starters.pop(); // Remove 5th best player
-                starters.push(benchHandlers[0]); // Add best available handler
+        // Sort by current ability (Meta Score)
+        let sorted = [...roster].sort((a, b) => b.metaScore - a.metaScore);
+        let starters = sorted.slice(0, 5);
+
+        // Logic: Ensure at least 1 Ball Handler
+        let hasHandler = starters.some(p => p.isBallHandler);
+        if (!hasHandler) {
+            let bestHandler = sorted.slice(5).find(p => p.isBallHandler);
+            if (bestHandler) {
+                starters.pop(); // Remove 5th best
+                starters.push(bestHandler); // Add handler
             }
         }
 
-        // Sort starters by meta score again just for display
+        // Sort for display
         starters.sort((a, b) => b.metaScore - a.metaScore);
 
         const tbody = document.querySelector('#starterTable tbody');
         tbody.innerHTML = '';
-        
         starters.forEach(p => {
-            let tags = '';
-            if(p.isBallHandler) tags += '<span class="stat-tag tag-bh">Handler</span>';
-            if(p.isBig) tags += '<span class="stat-tag tag-big">Big</span>';
-            if(p.isShooter) tags += '<span class="stat-tag tag-shoot">3PT</span>';
-
-            let row = `<tr>
-                <td><b>${p.name}</b> (${p.age})${tags}</td>
-                <td>${p.hgt >= 60 ? 'Frontcourt' : 'Backcourt'}</td>
-                <td class="val-high">${Math.round(p.metaScore)}</td>
+            let colorClass = p.metaScore > 600 ? 'val-elite' : 'val-good';
+            tbody.innerHTML += `<tr>
+                <td><b>${p.name}</b> <small>(${p.age})</small></td>
+                <td>${p.hgt >= 55 ? 'Frontcourt' : 'Backcourt'}</td>
+                <td class="${colorClass} stat-val">${Math.round(p.metaScore)}</td>
             </tr>`;
-            tbody.innerHTML += row;
         });
     }
 
-    // 5. Algorithm: Keepers
-    function buildKeepers(roster) {
-        const tbody = document.querySelector('#keeperTable tbody');
+    function buildProjects(roster) {
+        const tbody = document.querySelector('#projectTable tbody');
         tbody.innerHTML = '';
+
+        // Filter: Young players who might NOT be starters, but have high physicals
+        let projects = roster.filter(p => p.age <= 25);
         
-        // Sort by Trade Value (Meta Score minus Age Penalty)
-        let keepers = [...roster].sort((a, b) => b.tradeValue - a.tradeValue);
-        
-        keepers.slice(0, 6).forEach(p => {
-            let row = `<tr>
-                <td>${p.name}</td>
-                <td>${p.age}</td>
-                <td class="val-green">${Math.round(p.metaScore)}</td>
+        // Sort by Physical Score (Ceiling)
+        projects.sort((a, b) => b.physicalScore - a.physicalScore);
+
+        projects.slice(0, 5).forEach(p => {
+            let isRaw = p.metaScore < 450; // Good physicals, bad skills
+            let status = isRaw ? `<span class="tag tag-stash">Raw Gem</span>` : `<span class="tag tag-core">Core</span>`;
+            
+            tbody.innerHTML += `<tr>
+                <td><b>${p.name}</b> <small>(${p.age})</small> ${status}</td>
+                <td>H:${p.hgt} S:${p.spd} J:${p.jmp}</td>
+                <td class="stat-val">${Math.round(p.physicalScore)}</td>
             </tr>`;
-            tbody.innerHTML += row;
         });
     }
 
-    // 6. Algorithm: Cuts/Trades
     function buildCuts(roster) {
         const tbody = document.querySelector('#cutTable tbody');
         tbody.innerHTML = '';
-        
-        // Cuts are Low IQ, Old/Slow, or just bad
+
         let cuts = roster.filter(p => {
-            // Logic: If you are old, you must be smart or tall. If you are slow and dumb, goodbye.
-            let slowAndOld = p.age > 29 && p.spd < 45;
-            let dumb = p.oiq < 38; 
-            let justBad = p.metaScore < 350; // Absolute floor
-            return slowAndOld || dumb || justBad;
+            // 1. Old and bad (Washed)
+            if (p.age > 26 && p.metaScore < 400) return true;
+            
+            // 2. Young but physically limited (No upside)
+            // If you are 22, 5'10" (hgt < 30) and slow (spd < 50), you will never be good in BBGM.
+            if (p.age <= 25 && p.hgt < 35 && p.spd < 55 && p.metaScore < 400) return true;
+            
+            return false;
         });
-        
+
         cuts.sort((a, b) => a.metaScore - b.metaScore); // Worst first
 
-        if(cuts.length === 0) {
-             tbody.innerHTML = '<tr><td colspan="3">No obvious cuts found. Good roster!</td></tr>';
-        }
+        if (cuts.length === 0) tbody.innerHTML = '<tr><td colspan="3">Roster looks clean!</td></tr>';
 
-        cuts.slice(0, 6).forEach(p => {
-            let reason = "Low OVR";
-            if (p.oiq < 38) reason = "Low IQ";
-            if (p.age > 29 && p.spd < 45) reason = "Washed";
+        cuts.forEach(p => {
+            let reason = "";
+            if (p.age > 26) reason = "Declining / Low Skill";
+            else reason = "Low Physical Ceiling";
 
-            let row = `<tr>
+            tbody.innerHTML += `<tr>
                 <td>${p.name}</td>
                 <td>${p.age}</td>
-                <td class="val-low">${reason}</td>
+                <td class="val-bad">${reason}</td>
             </tr>`;
-            tbody.innerHTML += row;
         });
     }
 
-    // 7. Algorithm: Targets
     function buildTargets(others) {
         const tbody = document.querySelector('#targetTable tbody');
         tbody.innerHTML = '';
 
-        // Look for:
-        // 1. Young (<=24) with high Height/Athleticism (The BBGM growth formula loves these)
-        // 2. Undervalued Vets (High IQ/Str but maybe low Ovr label)
+        // Target Logic:
+        // 1. "The Freak": Age <= 23, Height > 60, Speed > 60 (Giannis/Wemby types)
+        // 2. "The Sniper": 3pt > 70, Age < 28 (Spacing)
+        // 3. "The General": Dribble + Pass > 140 combined (Elite handler)
         
         let targets = others.filter(p => {
-            // Young athletic freaks (The "Giannis" archetype)
-            let athleticFreak = p.age <= 24 && p.hgt > 55 && p.spd > 55;
-            
-            // Smart efficient players (The "Jokic" archetype)
-            let efficiencyGod = p.oiq > 65 && p.hgt > 50 && p.pss > 50;
-            
-            return athleticFreak || efficiencyGod;
+            let isFreak = p.age <= 23 && p.hgt > 60 && p.spd > 50;
+            let isYoungElite = p.age <= 24 && p.physicalScore > 200;
+            return isFreak || isYoungElite;
         });
 
-        // Sort by potential impact (Meta Score)
-        targets.sort((a, b) => b.metaScore - a.metaScore);
+        targets.sort((a, b) => b.physicalScore - a.physicalScore);
 
         targets.slice(0, 8).forEach(p => {
-            let reason = p.age <= 24 ? "Future Star" : "Win Now";
-            if(p.hgt > 70) reason += " (Giant)";
+            let type = "Prospect";
+            if(p.hgt > 70) type = "Unicorn Big";
+            else if(p.spd > 75) type = "Speedster";
             
-            let row = `<tr>
-                <td><b>${p.name}</b> (${p.age})</td>
-                <td>${p.team}</td>
-                <td class="val-mid">${reason}</td>
+            tbody.innerHTML += `<tr>
+                <td><b>${p.name}</b> <small>(${p.age})</small></td>
+                <td><small>${p.team}</small></td>
+                <td class="val-mid">${type}</td>
             </tr>`;
-            tbody.innerHTML += row;
         });
     }
 </script>
