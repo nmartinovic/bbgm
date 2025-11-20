@@ -171,34 +171,47 @@
 
     function parseCSV(csv) {
         const lines = csv.split('\n');
-        const headers = lines[0].split(',').map(h => h.trim());
         
+        // Clean headers: remove quotes, whitespace
+        const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+        
+        // Basic validation to ensure it's the Ratings file
+        if (!headers.includes('Hgt') && !headers.includes('hgt')) {
+            alert("⚠️ Wrong File! It looks like you uploaded 'Player Stats'. Please upload 'Player Ratings' (which contains Hgt, Spd, Jmp, etc).");
+            return;
+        }
+
         allPlayers = [];
         teams.clear();
 
         for(let i = 1; i < lines.length; i++) {
             if(!lines[i].trim()) continue;
             
-            // Handle commas inside quotes if necessary, simplistic split here
+            // Handle commas inside values (e.g. "Name, Jr.") could break simple splits, 
+            // but BBGM CSVs are usually simple. Simple split for now:
             const currentline = lines[i].split(',');
             let player = {};
             
             for(let j = 0; j < headers.length; j++) {
-                // Clean stat names to lowercase keys
-                let key = headers[j].toLowerCase().replace('%','').replace(' ','');
+                // Clean stat names to lowercase keys to avoid casing issues
+                let header = headers[j].toLowerCase().replace('%','').replace(' ','');
+                
+                // map '3pt' specifically if needed, though lowercase handles it usually
                 let val = currentline[j];
                 
-                // Convert number strings to integers
+                // Convert numeric strings to floats
                 if(!isNaN(val) && val.trim() !== "") {
                     val = parseFloat(val);
                 }
-                player[key] = val;
+                player[header] = val;
             }
             
             // Calculate Custom Metrics
             calculateMetrics(player);
             
-            if(player.team) teams.add(player.team);
+            // Add to team list if team exists
+            if(player.team && player.team !== "") teams.add(player.team);
+            
             allPlayers.push(player);
         }
 
@@ -218,28 +231,30 @@
 
     // 2. The "Secret Sauce" Formulas
     function calculateMetrics(p) {
-        // Meta Score: Heavily weighted on Height, Speed, IQ, and Efficiency ratings
-        // This ignores the "Ovr" stat which can be misleading
-        // Hgt is king in BBGM.
+        // Helper to safely get a number, defaulting to 0 if missing
+        const get = (val) => (typeof val === 'number' && !isNaN(val)) ? val : 0;
+
+        // Meta Score Calculation
+        // Note: We access p['3pt'] because the header is "3Pt" -> becomes "3pt"
         p.metaScore = (
-            (p.hgt * 3.0) + 
-            (p.spd * 1.0) + 
-            (p.jmp * 0.8) + 
-            (p.oiq * 1.5) + 
-            (p.diq * 1.2) + 
-            (p.drb * 0.8) + 
-            (p.pss * 0.8) + 
-            (p.reb * 1.0) + 
-            (p.three * 0.5) // Spacing helps, but athleticism drives the engine
+            (get(p.hgt) * 3.0) + 
+            (get(p.spd) * 1.0) + 
+            (get(p.jmp) * 0.8) + 
+            (get(p.oiq) * 1.5) + 
+            (get(p.diq) * 1.2) + 
+            (get(p.drb) * 0.8) + 
+            (get(p.pss) * 0.8) + 
+            (get(p.reb) * 1.0) + 
+            (get(p['3pt']) * 0.5) 
         );
 
-        // Determine Functional Roles (Tags)
-        p.isBallHandler = (p.drb + p.pss) / 2 > 55;
-        p.isBig = (p.hgt + p.str + p.reb) / 3 > 60;
-        p.isShooter = p.three > 60;
+        // Determine Functional Roles (Tags) based on ratings
+        p.isBallHandler = (get(p.drb) + get(p.pss)) / 2 > 55;
+        p.isBig = (get(p.hgt) + get(p.str) + get(p.reb)) / 3 > 60;
+        p.isShooter = get(p['3pt']) > 60;
         
         // Value over time (for trade logic)
-        // Penalize age heavily after 30
+        // Penalize age heavily after 29 (Athleticism crash in BBGM)
         let agePenalty = p.age > 29 ? (p.age - 29) * 15 : 0;
         p.tradeValue = p.metaScore - agePenalty;
     }
@@ -268,14 +283,17 @@
         
         // Check for critical missing roles
         let handlers = starters.filter(p => p.isBallHandler).length;
-        let bigs = starters.filter(p => p.isBig).length;
-
-        // If no ball handler, force swap the worst starter for best bench handler
+        
+        // If no ball handler in top 5, force swap the worst starter for best bench handler
+        // (BBGM engine punishes 0 passers heavily with turnovers)
         if (handlers === 0) {
             let benchHandlers = roster.slice(5).filter(p => p.isBallHandler);
+            // Sort bench handlers by meta score to get the best one
+            benchHandlers.sort((a,b) => b.metaScore - a.metaScore);
+            
             if (benchHandlers.length > 0) {
-                starters.pop(); // Remove worst best player
-                starters.push(benchHandlers[0]); // Add best handler
+                starters.pop(); // Remove 5th best player
+                starters.push(benchHandlers[0]); // Add best available handler
             }
         }
 
@@ -305,8 +323,8 @@
         const tbody = document.querySelector('#keeperTable tbody');
         tbody.innerHTML = '';
         
-        // Keepers are High Meta Score AND (Young OR Elite)
-        let keepers = roster.filter(p => p.tradeValue > 500); // Arbitrary threshold based on formula
+        // Sort by Trade Value (Meta Score minus Age Penalty)
+        let keepers = [...roster].sort((a, b) => b.tradeValue - a.tradeValue);
         
         keepers.slice(0, 6).forEach(p => {
             let row = `<tr>
@@ -324,20 +342,24 @@
         tbody.innerHTML = '';
         
         // Cuts are Low IQ, Old/Slow, or just bad
-        // Logic: Low Meta Score OR (Old AND Low Physicals)
         let cuts = roster.filter(p => {
-            let slowAndOld = p.age > 29 && p.spd < 40;
-            let dumb = p.oiq < 35;
-            let justBad = p.metaScore < 350;
+            // Logic: If you are old, you must be smart or tall. If you are slow and dumb, goodbye.
+            let slowAndOld = p.age > 29 && p.spd < 45;
+            let dumb = p.oiq < 38; 
+            let justBad = p.metaScore < 350; // Absolute floor
             return slowAndOld || dumb || justBad;
         });
         
         cuts.sort((a, b) => a.metaScore - b.metaScore); // Worst first
 
+        if(cuts.length === 0) {
+             tbody.innerHTML = '<tr><td colspan="3">No obvious cuts found. Good roster!</td></tr>';
+        }
+
         cuts.slice(0, 6).forEach(p => {
             let reason = "Low OVR";
-            if (p.oiq < 35) reason = "Low IQ";
-            if (p.age > 29 && p.spd < 40) reason = "Washed";
+            if (p.oiq < 38) reason = "Low IQ";
+            if (p.age > 29 && p.spd < 45) reason = "Washed";
 
             let row = `<tr>
                 <td>${p.name}</td>
@@ -354,18 +376,23 @@
         tbody.innerHTML = '';
 
         // Look for:
-        // 1. Young (<=23) with high Height/Athleticism
-        // 2. Undervalued Vets (High IQ/Str, Low Ovr label)
+        // 1. Young (<=24) with high Height/Athleticism (The BBGM growth formula loves these)
+        // 2. Undervalued Vets (High IQ/Str but maybe low Ovr label)
         
         let targets = others.filter(p => {
-            let athleticFreak = p.age <= 24 && p.hgt > 60 && p.spd > 60;
-            let efficiencyGod = p.oiq > 70 && p.hgt > 50;
+            // Young athletic freaks (The "Giannis" archetype)
+            let athleticFreak = p.age <= 24 && p.hgt > 55 && p.spd > 55;
+            
+            // Smart efficient players (The "Jokic" archetype)
+            let efficiencyGod = p.oiq > 65 && p.hgt > 50 && p.pss > 50;
+            
             return athleticFreak || efficiencyGod;
         });
 
+        // Sort by potential impact (Meta Score)
         targets.sort((a, b) => b.metaScore - a.metaScore);
 
-        targets.slice(0, 6).forEach(p => {
+        targets.slice(0, 8).forEach(p => {
             let reason = p.age <= 24 ? "Future Star" : "Win Now";
             if(p.hgt > 70) reason += " (Giant)";
             
