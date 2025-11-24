@@ -190,12 +190,20 @@ function addRolesAndScores(players) {
 function determineRole(posRaw) {
   const pos = (posRaw || "").toUpperCase();
 
-  if (pos.includes("PG") || pos === "G") return "G";
-  if (pos.includes("SG") && !pos.includes("F")) return "G";
+  // Perimeter / ball-handler types
+  if (pos.includes("PG")) return "G";
+  if (pos.includes("SG")) return "G";
+  if (pos.includes("GF")) return "G";  // guard/forward counts as guard-type
+  if (pos === "G") return "G";
+
+  // Bigs
   if (pos.includes("C")) return "B";
   if (pos.includes("PF") || pos.includes("FC")) return "B";
-  if (pos.includes("SF") || pos.includes("GF") || pos === "F") return "W";
 
+  // Wings / forwards
+  if (pos.includes("SF") || pos === "F") return "W";
+
+  // Fallbacks
   if (pos.includes("G")) return "G";
   if (pos.includes("F")) return "W";
   return "B";
@@ -425,23 +433,56 @@ function renderLineup(myTeam) {
   container.innerHTML = html;
 }
 
+function samePlayer(a, b) {
+  return a.Name === b.Name && a.Team === b.Team && a.Age === b.Age;
+}
+
 function pickStarters(players) {
-  let remaining = [...players];
+  // Sort all players on your team by impact
+  const sorted = [...players].sort((a, b) => b.impactScore - a.impactScore);
 
-  const guards = pickFromRole(remaining, "G", 2);
-  remaining = remaining.filter((p) => !guards.includes(p));
-  const wings = pickFromRole(remaining, "W", 2);
-  remaining = remaining.filter((p) => !wings.includes(p));
-  const bigs = pickFromRole(remaining, "B", 1);
-  remaining = remaining.filter((p) => !bigs.includes(p));
-
-  let starters = [...guards, ...wings, ...bigs];
-
-  if (starters.length < 5) {
-    const need = 5 - starters.length;
-    const sorted = remaining.sort((a, b) => b.impactScore - a.impactScore);
-    starters = starters.concat(sorted.slice(0, need));
+  if (sorted.length <= 5) {
+    return sorted;
   }
+
+  // Start with the 5 best overall
+  let starters = sorted.slice(0, 5);
+
+  const hasRole = (list, role) => list.some((p) => p.role === role);
+  const bestWithRole = (role) => sorted.find((p) => p.role === role);
+
+  const replaceLowestNonRole = (list, role, candidate) => {
+    if (!candidate) return list;
+
+    // If we already have this role or the candidate is already in, do nothing
+    if (list.some((p) => p.role === role)) return list;
+    if (list.some((p) => samePlayer(p, candidate))) return list;
+
+    // Find the lowest-impact player who does NOT have the required role
+    let worstIdx = -1;
+    let worstImpact = Infinity;
+
+    list.forEach((p, idx) => {
+      if (p.role === role) return;
+      if (p.impactScore < worstImpact) {
+        worstImpact = p.impactScore;
+        worstIdx = idx;
+      }
+    });
+
+    if (worstIdx === -1) return list;
+
+    const newList = [...list];
+    newList[worstIdx] = candidate;
+    return newList;
+  };
+
+  const bestBig = bestWithRole("B");
+  const bestGuard = bestWithRole("G");
+
+  // Ensure at least one big and one guard, when the roster has them
+  starters = replaceLowestNonRole(starters, "B", bestBig);
+  starters = replaceLowestNonRole(starters, "G", bestGuard);
 
   return starters;
 }
